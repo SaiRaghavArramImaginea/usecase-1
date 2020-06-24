@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="32e704ca-d37c-4477-b6f8-384d78cd8a16">
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="f9710eed-2028-49e7-8f08-d689c4e481c7" >
+		<file:connection workingDir="/home/sairaghav/AnypointStudio/studio-workspace" />
+	</file:config>
+	<file:config name="File_Config1" doc:name="File Config" doc:id="c6993637-db31-433c-bbc9-c6601ba1465c" >
+		<file:connection workingDir="/home/sairaghav/AnypointStudio/studio-workspace/mule" />
+	</file:config>
+	<file:config name="File_Config2" doc:name="File Config" doc:id="b74f3cc7-ac7a-4e60-b3d1-7bb341c7fdf8" >
+		<file:connection workingDir="/home/sairaghav/AnypointStudio/studio-workspace/usecase-1" />
+	</file:config>
+	<flow name="usecase-1Flow" doc:id="15843fee-5a4d-43be-918b-14813f02bb85" >
+		<http:listener doc:name="Listener" doc:id="152af0ea-7527-4ea1-bbd8-ab6952b9eeb1" config-ref="HTTP_Listener_config" path="/usecase-01"/>
+		<file:read doc:name="Read" doc:id="0bcb4df1-d653-4c0c-8d94-bd4b7cf2a9cb" config-ref="File_Config" path="/home/sairaghav/AnypointStudio/studio-workspace/usecase-1/src/main/resources/examples/Use_Case_1_Source.csv" outputMimeType="application/csv"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d6ae4b9e-12e4-4c2f-9473-21a6121ae161" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="f95640e1-c00c-4123-999a-d90c97cd152d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+/*var Employees = payload map {
+	StudentID: $.StudentID as Number,
+	StudentName: $.StudentName,
+	Semester: $.Semester as Number,
+	SemesterMarks: $.SemesterMarks as Number
+}
+var distinctEmp = payload distinctBy $.StudentID map {
+	StudentID: $.StudentID as Number,
+	StudentName: $.StudentName,
+	Semester: $.Semester as Number,
+	SemesterMarks: $.SemesterMarks as Number
+}*/
+---
+employees : (payload distinctBy $.StudentID) map(d,i) -> {
+	ID: d.StudentID as Number,
+	StudentName: d.StudentName,
+	CGPA : (payload filter(d.StudentID == $.StudentID))
+	reduce((emp,avg=0) -> avg + (emp.SemesterMarks/4))	
+}
+/*distinctEmp map(d,i) ->{
+	ID: d.StudentID as Number,
+	StudentName: d.StudentName,
+	CGPA : Employees filter(d.StudentID == $.StudentID)
+	reduce((emp,avg=0) -> avg + (emp.SemesterMarks/4))	
+}*/]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write" doc:id="9e072c24-8827-419e-b87a-bf3ad427cde8" config-ref="File_Config2" path="/home/sairaghav/AnypointStudio/studio-workspace/mule/Response.json" mode="APPEND"/>
+	</flow>
+</mule>
